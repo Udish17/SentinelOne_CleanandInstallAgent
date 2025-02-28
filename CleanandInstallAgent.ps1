@@ -1,4 +1,16 @@
-﻿
+﻿<#Version:
+       v1.1-alpha
+    About:
+       This script is written to remove and install the SentinelOne agent.
+    Author :
+       Udishman Mudiar
+    Co-author :
+       Sourav Mahato
+    Feedback :
+       Email: udishman.mudiar@sentinelone.com
+       Or the engineer you are working with    
+ #>
+
 param(
     [Parameter(Mandatory=$false)]
            [String]$k,
@@ -6,22 +18,17 @@ param(
             [String]$t,
     [Parameter(Mandatory=$false)]
             [String]$p,
-     [Parameter(Mandatory=$false)]
-            [String]$n
+    [Parameter(Mandatory=$false)]
+            [String]$n,
+    [Parameter(Mandatory=$false)]
+            [Boolean]$b
 )
 
-#Replace the below parameters before running the script for testing
-#$Passphrase = "
+#Replace the below parameters before running the script for debugging
+#$paramPassphrase = ""
 #$siteToken = ""
 #$pathToSOI = "" E.x: "C:\Temp"
 #$SOIName = "" E.x: "SentinelOneInstaller_windows_64bit_v24_1_4_257.exe"
-
-
-$paramPassphrase = $k
-$siteToken = $t
-$pathToSOI = $p
-$SOIName = $n
-
 
 function logMessage($sev, $message, $file){
     $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss')    
@@ -68,7 +75,7 @@ function checkPreReq(){
         logMessage INFO "SOI $($SOIName) exist." $logFile
     }
 
-    Write-Host "All pre-requisistes passed.." -ForegroundColor Cyan
+    Write-Host "All pre-requisistes passed.." -ForegroundColor Green
     logMessage INFO "All pre-requisistes passed." $logFile
 }
 
@@ -148,9 +155,18 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
 
                 createTask $argscriptPath $argscriptFullPath                
                 
-                Write-Warning "Removal Completed. Restart the computer for installation to complete successfully."
-                logMessage WARN "Removal Completed. Restart the computer for installation to complete successfully." $logFile 
-                Start-Sleep -Seconds 5  # Pauses for 5 seconds
+                if($boot){
+                    Write-Warning "Removal Completed. Rebooting computer as boot parameter was set to true. After reboot, installation will proceed."
+                    logMessage WARN "RRemoval Completed. Rebooting computer as boot parameter was set to true. After reboot, installation will proceed." $logFile 
+                    Start-Sleep -Seconds 5  # Pauses for 5 seconds
+                    Restart-Computer -Force -Confirm:$false
+                }
+                else{
+                    Write-Warning "Removal Completed. Restart the computer for installation to complete successfully."
+                    logMessage WARN "Removal Completed. Restart the computer for installation to complete successfully." $logFile 
+                    Start-Sleep -Seconds 5  # Pauses for 5 seconds
+                }
+                
             }
             elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
             {
@@ -169,13 +185,13 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
 function checkTask(){
     if(Get-ScheduledTask -TaskName "SentinelOne Installer Startup" -ErrorAction SilentlyContinue){
         #Write-Host "Task 'SentinelOne Installer Startup' is already present. Not proceeding with creating the same task." -ForegroundColor Cyan
-        logMessage INFO "Task 'SentinelOne Installer Startup' is already present." $logFile
+        logMessage INFO "Task 'SentinelOne Installer Startup' found" $logFile
         return 1
     }
     else{
-        logMessage INFO "Task 'SentinelOne Installer Startup' not found. Proceeding with task creation." $logFile
+        logMessage INFO "Task 'SentinelOne Installer Startup' not found." $logFile
         return 0
-        #Write-Host "Task 'SentinelOne Installer Startup' not found. Proceeding with task creation..." -ForegroundColor Magenta        
+        #Write-Host "Task 'SentinelOne Installer Startup' not found. -ForegroundColor Magenta        
     }
 }
 
@@ -191,8 +207,56 @@ function deleteTask(){
     Get-ScheduledTask -TaskName "SentinelOne Installer Startup" | Unregister-ScheduledTask -Confirm:$false
 }
 
+function startupTask(){
+    $startuplogFile = $logPath + "\" + "startup_log_$($dateUTC).txt"
+    logMessage INFO "Task 'SentinelOne Installer Startup' is already present." $startuplogFile
+    #Write-Host "Task 'SentinelOne Installer Startup' is already present."
+    #Write-Host "Check if the last Exit Code is 200."
+    logMessage INFO "Check if the last Exit Code is 200." $startuplogFile
+
+    $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
+    if($exitcodeS1 -eq 200){
+        logMessage INFO "The last Exit Code is 200. Procceding with installation of the agent." $startuplogFile
+        #Write-Host "The last Exit Code is 200. Procceding with installation of the agent.."
+        copyExeToLocalPath
+        Start-Process -FilePath $currentPathSOI -ArgumentList "-f --dont_fail_on_config_preserving_failures -t `"$siteToken`" -q" -NoNewWindow -Wait
+
+        $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
+        if($exitcodeS1 -eq 0)
+        {
+            logMessage INFO "The Exit Code after running the installation from startup is 0. The agent installation is successful." $startuplogFile
+            logMessage INFO "Deleting the task 'SentinelOne Installer Startup'. So that it does not run at the next startup." $startuplogFile
+            deleteTask
+            checkTask                
+        }
+        else
+        {
+            logMessage WARN "The last Exit Code is not equal to 0. It is $($exitcodeS1)." $startuplogFile
+            logMessage INFO "Deleting the task 'SentinelOne Installer Startup'. So that it does not run at the next startup." $startuplogFile
+            deleteTask
+        }
+    }
+    # We are deleting the task 'SentinelOne Installer Startup' if the last Exit Code is not 200. Only if is 200 we will have a success in running the installer after reboot.
+    else{
+        #Write-Host "The last Exit Code is not equal to 200. It is $($exitcodeS1). Deleting the task 'SentinelOne Installer Startup'"
+        logMessage INFO "The last Exit Code is not equal to 200. It is $($exitcodeS1). Deleting the task 'SentinelOne Installer Startup'" $startuplogFile               
+        deleteTask
+    }    
+}
+
 #main
 try{
+
+    $paramPassphrase = $k
+    $siteToken = $t
+    $pathToSOI = $p
+    $SOIName = $n
+    $boot = $b
+
+    if($b -eq $NULL){
+        $boot = $false
+    }
+
     $Invocation = (Get-Variable MyInvocation).Value
     $logPath =  Split-Path $Invocation.MyCommand.Path
     $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
@@ -203,44 +267,11 @@ try{
     
     $taskReturn = checkTask
     if($taskReturn -eq 1){
-        $startuplogFile = $logPath + "\" + "startup_log_$($dateUTC).txt"
-        logMessage INFO "Task 'SentinelOne Installer Startup' is already present." $startuplogFile
-        #Write-Host "Task 'SentinelOne Installer Startup' is already present."
-        #Write-Host "Check if the last Exit Code is 200."
-        logMessage INFO "Check if the last Exit Code is 200." $startuplogFile
-
-        $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
-        if($exitcodeS1 -eq 200){
-            logMessage INFO "The last Exit Code is 200. Procceding with installation of the agent." $startuplogFile
-            #Write-Host "The last Exit Code is 200. Procceding with installation of the agent.."
-            copyExeToLocalPath
-            Start-Process -FilePath $currentPathSOI -ArgumentList "-f --dont_fail_on_config_preserving_failures -t `"$siteToken`" -q" -NoNewWindow -Wait
-
-            $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
-            if($exitcodeS1 -eq 0)
-            {
-                logMessage INFO "The last Exit Code is 0. The agent installation is successful." $startuplogFile
-                logMessage INFO "Deleting the task 'SentinelOne Installer Startup'. So that it does not run at the next startup." $startuplogFile
-                deleteTask
-                Exit
-            }
-            else
-            {
-                logMessage WARN "The last Exit Code is not equal to 0. It is $($exitcodeS1)." $startuplogFile
-                logMessage INFO "Deleting the task 'SentinelOne Installer Startup'. So that it does not run at the next startup." $startuplogFile
-                deleteTask
-            }
-        }
-        # We are deleting the task 'SentinelOne Installer Startup' if the last Exit Code is not 200. Only if is 200 we will have a success in running the installer after reboot.
-        else{
-            #Write-Host "The last Exit Code is not equal to 200. It is $($exitcodeS1). Deleting the task 'SentinelOne Installer Startup'"
-            logMessage INFO "The last Exit Code is not equal to 200. It is $($exitcodeS1). Deleting the task 'SentinelOne Installer Startup'" $startuplogFile               
-            deleteTask
-        }
+        startupTask        
     }
     else{
         #Write-Host "Task 'SentinelOne Installer Startup' is not present. Treating as a new installer."
-        logMessage INFO "Task 'SentinelOne Installer Startup' is not present. Treating as a new installer." $logFile
+        logMessage INFO "Task 'SentinelOne Installer Startup' not found. Treating as a new installer." $logFile
 
         copyExeToLocalPath       
 
@@ -255,7 +286,8 @@ try{
 }
 catch{
     $ErrorMessage = $_.Exception.Message
-    Write-Error "Script failed with $($ErrorMessage)"
+    Write-Error "Script failed with $($ErrorMessage)."
+    logMessage ERROR "Script failed with $($ErrorMessage)" $logFile 
 }
 
 
