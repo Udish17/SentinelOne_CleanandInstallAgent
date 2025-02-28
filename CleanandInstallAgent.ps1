@@ -29,6 +29,49 @@ function logMessage($sev, $message, $file){
     $dateUTC + "`t" + $sev + "`t" + $message >> $file
 }
 
+function checkPreReq(){
+    Write-Host "Checking Pre-requsistes..." -ForegroundColor Cyan
+    logMessage INFO "Checking Pre-rquisites." $logFile
+    #Check Administrator Privilege
+    $user = [Security.Principal.WindowsIdentity]::GetCurrent();
+    $admin=(New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)  
+
+    if ($admin -eq $false) {
+        Write-Warning "Please run the script as Administrator"
+        logMessage WARN "Script not ran as Administrator." $logFile
+        Start-Sleep -s 5
+        Exit
+    }
+    else{
+        logMessage INFO "Script ran as Administrator." $logFile
+    }
+
+    #check SOI path existence
+    if(!(Test-Path -Path $pathToSOI -ErrorAction SilentlyContinue)){
+        Write-Warning "Path to SOI $($pathToSOI) does not exist."
+        logMessage WARN "Path to SOI $($pathToSOI) does not exist." $logFile
+        Start-Sleep -s 5
+        Exit
+    }
+    else{
+        logMessage INFO "Path to SOI $($pathToSOI) exist." $logFile
+    }
+
+    #check SOI existence
+    if(!(Test-Path -Path $pathToSOI\$SOIName -ErrorAction SilentlyContinue)){
+        Write-Warning "SOI $($SOIName) does not exist."
+        logMessage WARN "SOI $($SOIName) does not exist." $logFile
+        Start-Sleep -s 5
+        Exit
+    }
+    else{
+        logMessage INFO "SOI $($SOIName) exist." $logFile
+    }
+
+    Write-Host "All pre-requisistes passed.." -ForegroundColor Cyan
+    logMessage INFO "All pre-requisistes passed." $logFile
+}
+
 function checkispathtoSOIRemote(){
     if($SOIName -match "\\\\"){
         $ispathToSOIRemote = $true
@@ -148,17 +191,8 @@ try{
     $logFile = $logPath + "\" + "log_$($dateUTC).txt"
     logMessage INFO "Script Starting" $logFile
 
-    #Check Administrator Privilege
-    $user = [Security.Principal.WindowsIdentity]::GetCurrent();
-    $admin=(New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)  
-
-    if ($admin -eq $false) {
-        Write-Warning "Please run the script as Administrator"
-        logMessage WARN "Script not run as Administrator." $logFile
-        Start-Sleep -s 5
-        Exit
-    }
-
+    checkPreReq
+    
     $taskReturn = checkTask
     if($taskReturn -eq 1){
         $startuplogFile = $logPath + "\" + "startup_log_$($dateUTC).txt"
