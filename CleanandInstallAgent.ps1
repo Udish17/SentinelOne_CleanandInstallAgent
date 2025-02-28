@@ -88,7 +88,6 @@ function getScriptDirectory
   Split-Path $Invocation.MyCommand.Path
 }
 
-
 function copyExeToLocalPath(){
     #copy the exe to a local path if the path is remote for better success of cleaner.
     $ispathToSOIRemote = checkispathtoSOIRemote
@@ -115,44 +114,53 @@ function copyExeToLocalPath(){
 
 function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){    
     try{
-            Write-Host "Ruuning SOI -c to clean the agent...." -ForegroundColor Magenta
+            Write-Host "Running SOI -c to clean the agent..." -ForegroundColor Magenta
+            logMessage INFO "Running SOI -c to clean the agent." $logFile
             Start-Process -FilePath $currentPathSOI -ArgumentList "-c -k `"$passphrase`" -t `"$siteToken`" -q" -NoNewWindow -wait    
     
             $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
             if($exitcodeS1 -eq '0')
             {
                 Write-Host "The cleaning is successfull. Exit code is $($exitcodeS1). Proceeding with installaton...." -ForegroundColor "Cyan"
+                logMessage INFO "The cleaning is successfull. Exit code is $($exitcodeS1). Proceeding with installaton." $logFile
                 #install with silent switch
                 Start-Process -FilePath $currentPathSOI -ArgumentList "-f --dont_fail_on_config_preserving_failures -t `"$siteToken`" -q" -NoNewWindow -Wait
                 
                 $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
                 if($exitcodeS1 -eq '0')
                 {
-                    Write-Host "The installation is successful. Exit code is $($exitcodeS1)." -ForegroundColor Green  
-            
+                    Write-Host "The installation is successful. Exit code is $($exitcodeS1)." -ForegroundColor Green
+                    logMessage INFO "The installation is successful. Exit code is $($exitcodeS1)." $logFile          
                 }        
                 elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
                 {
-                    Write-Host "The installation is NOT successfull. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
+                    Write-Warning "The installation is NOT successfull. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
+                    logMessage INFO "The installation is NOT successfull. Exit code is $($exitcodeS1)." $logFile 
                 }
             }    
             elseif($exitcodeS1 -eq '200')
             {
                 Write-Host "`tThe cleaning will be successful after reboot. Exit code is $($exitcodeS1)." -ForegroundColor Cyan
-                #Before the reboot, adding a Task Scheduler task to reinstall the agent after reboot            
+                logMessage INFO "The cleaning will be successful after reboot. Exit code is $($exitcodeS1)." $logFile 
                 
+                #Before the reboot, adding a Task Scheduler task to reinstall the agent after reboot            
+                logMessage INFO "Before the reboot, adding a Task Scheduler task to reinstall the agent after reboot " $logFile 
+
                 createTask $argscriptPath $argscriptFullPath                
                 
                 Write-Warning "Removal Completed. Restart the computer for installation to complete successfully."
+                logMessage WARN "Removal Completed. Restart the computer for installation to complete successfully." $logFile 
                 Start-Sleep -Seconds 5  # Pauses for 5 seconds
             }
             elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
             {
                 Write-Host "`tThe cleaning process seems to have failed. Exit code is $($exitcodeS1)" -ForegroundColor Yellow
+                logMessage ERROR "The cleaning process seems to have failed. Exit code is $($exitcodeS1)" $logFile 
             } 
         }
         catch{
             $ErrorMessage = $_.Exception.Message
+            logMessage ERROR "Cleaning failed with $($ErrorMessage)" $logFile 
             Write-Error "Cleaning failed with $($ErrorMessage)"
             exit
         }
@@ -189,7 +197,7 @@ try{
     $logPath =  Split-Path $Invocation.MyCommand.Path
     $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
     $logFile = $logPath + "\" + "log_$($dateUTC).txt"
-    logMessage INFO "Script Starting" $logFile
+    logMessage INFO "Script Starting." $logFile
 
     checkPreReq
     
@@ -203,7 +211,7 @@ try{
 
         $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
         if($exitcodeS1 -eq 200){
-            logMessage INFO "The last Exit Code is 200. Procceding with installation of the agent..." $startuplogFile
+            logMessage INFO "The last Exit Code is 200. Procceding with installation of the agent." $startuplogFile
             #Write-Host "The last Exit Code is 200. Procceding with installation of the agent.."
             copyExeToLocalPath
             Start-Process -FilePath $currentPathSOI -ArgumentList "-f --dont_fail_on_config_preserving_failures -t `"$siteToken`" -q" -NoNewWindow -Wait
@@ -237,7 +245,8 @@ try{
         copyExeToLocalPath       
 
         # start the cleaning process
-        Write-Host "Starting the cleaning process...." -ForegroundColor Cyan        
+        Write-Host "Starting the cleaning process..." -ForegroundColor Cyan
+        logMessage INFO "Starting the cleaning process." $logFile        
             
         $scriptPath = getScriptDirectory
         $scriptFullPath = $MyInvocation.MyCommand.Path 
