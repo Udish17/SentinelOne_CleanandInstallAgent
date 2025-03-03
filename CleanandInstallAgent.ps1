@@ -143,7 +143,7 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
             Write-Host "Running SOI -c to clean the agent..." -ForegroundColor Magenta
             logMessage INFO "Running SOI -c to clean the agent." $logFile
             
-            if($passphrase -eq $NULL){
+            if(-not $passphrase){
                 Write-Host "Passphrase is NULL." -ForegroundColor Magenta
                 logMessage WARN "Passphrase is NULL." $logFile
                 $serviceexistenace = checkServiceExistence
@@ -159,7 +159,7 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
                 }
             }
             else{
-                logMessage INFO "SPassphrase is present. Running SOIC -c with -k." $logFile
+                logMessage INFO "Passphrase is present. Running SOI -c with -k." $logFile
                 Start-Process -FilePath $currentPathSOI -ArgumentList "-c -k `"$passphrase`" -t `"$siteToken`" -q" -NoNewWindow -wait    
             }               
     
@@ -206,15 +206,15 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
                 }                
             }
             elseif($exitcodeS1 -eq '2021' ){
-                Write-Host "`tThe cleaning process seems to have failed. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
+                Write-Host "`tThe cleaning process failed. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
                 Write-Host "`tAuthorization failed. Make sure 'Confirm Local Upgrade' is done on console for the endpoint. Or 'Site Wide Authorization' is done." -ForegroundColor Yellow
                 Write-Host "`tIf the above points are already done and verified. Escalate the issue to S1 support." -ForegroundColor Yellow
-                logMessage ERROR "The cleaning process seems to have failed. Exit code is $($exitcodeS1)" $logFile 
+                logMessage ERROR "The cleaning process failed. Exit code is $($exitcodeS1)" $logFile 
             }
             elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
             {
-                Write-Host "`tThe cleaning process seems to have failed. Exit code is $($exitcodeS1)" -ForegroundColor Yellow
-                logMessage ERROR "The cleaning process seems to have failed. Exit code is $($exitcodeS1)" $logFile 
+                Write-Host "`tThe cleaning process failed. Exit code is $($exitcodeS1)" -ForegroundColor Yellow
+                logMessage ERROR "The cleaning process failed. Exit code is $($exitcodeS1)" $logFile 
             } 
         }
         catch{
@@ -289,22 +289,27 @@ function startupTask(){
 
 #main
 try{
+    $Invocation = (Get-Variable MyInvocation).Value
+    $logPath =  Split-Path $Invocation.MyCommand.Path
+    $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
+    $logFile = $logPath + "\" + "log_$($dateUTC).txt"
+    logMessage INFO "Script Starting." $logFile
 
     $paramPassphrase = $k
     $siteToken = $t
     $pathToSOI = $p
     $SOIName = $n
     $boot = $b
+    logMessage INFO "Arguments passed are:" $logFile
+    logMessage INFO "Passphrase  : $($paramPassphrase)" $logFile
+    logMessage INFO "Site Token  : $($siteToken)" $logFile
+    logMessage INFO "Path to SOI : $($pathToSOI)" $logFile
+    logMessage INFO "SOI Name    : $($SOIName)" $logFile
+    logMessage INFO "Boot flag   : $($boot)" $logFile
 
     if($b -eq $NULL){
         $boot = $false
-    }
-
-    $Invocation = (Get-Variable MyInvocation).Value
-    $logPath =  Split-Path $Invocation.MyCommand.Path
-    $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
-    $logFile = $logPath + "\" + "log_$($dateUTC).txt"
-    logMessage INFO "Script Starting." $logFile
+    }    
 
     checkPreReq
     
