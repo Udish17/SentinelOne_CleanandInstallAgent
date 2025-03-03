@@ -119,11 +119,49 @@ function copyExeToLocalPath(){
     }
 }
 
+function checkServiceExistence(){
+    logMessage INFO "Check Service existence." $logFile
+    $service = Get-Service -Name SentinelAgent
+    if($service){
+        logMessage INFO "SentinelAgent service is present." $logFile
+        if($service.Status -eq 'Running'){
+            logMessage INFO "SentinelAgent service is running." $logFile
+            return 1
+        }
+        else{
+            logMessage WARN "SentinelAgent service is NOT running." $logFile
+            return 0
+        }
+    }
+    else{
+        logMessage INFO "SentinelAgent service is NOT present." $logFile
+    }
+}
+
 function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){    
     try{
             Write-Host "Running SOI -c to clean the agent..." -ForegroundColor Magenta
             logMessage INFO "Running SOI -c to clean the agent." $logFile
-            Start-Process -FilePath $currentPathSOI -ArgumentList "-c -k `"$passphrase`" -t `"$siteToken`" -q" -NoNewWindow -wait    
+            
+            if($passphrase -eq $NULL){
+                Write-Host "Passphrase is NULL." -ForegroundColor Magenta
+                logMessage WARN "Passphrase is NULL." $logFile
+                $serviceexistenace = checkServiceExistence
+                if($serviceexistenace -eq 1){
+                    Write-Warning "S1 Agent service is running. Running SOI -c without passphrase. Might return 2021 Exit Code."
+                    logMessage WARN "S1 Agent service is running. Running SOI -c without passphrase." $logFile
+                    Start-Process -FilePath $currentPathSOI -ArgumentList "-c -t `"$siteToken`" -q" -NoNewWindow -wait 
+                }
+                else{
+                    Write-Host "S1 Agent service is running. Running SOI -c without passphrase." -ForegroundColor Magenta
+                    logMessage INFO "S1 Agent service is running. Running SOI -c without passphrase." $logFile
+                    Start-Process -FilePath $currentPathSOI -ArgumentList "-c -t `"$siteToken`" -q" -NoNewWindow -wait 
+                }
+            }
+            else{
+                logMessage INFO "SPassphrase is present. Running SOIC -c with -k." $logFile
+                Start-Process -FilePath $currentPathSOI -ArgumentList "-c -k `"$passphrase`" -t `"$siteToken`" -q" -NoNewWindow -wait    
+            }               
     
             $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
             if($exitcodeS1 -eq '0')
@@ -165,8 +203,13 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
                     Write-Warning "Removal Completed. Restart the computer for installation to complete successfully."
                     logMessage WARN "Removal Completed. Restart the computer for installation to complete successfully." $logFile 
                     Start-Sleep -Seconds 5  # Pauses for 5 seconds
-                }
-                
+                }                
+            }
+            elseif($exitcodeS1 -eq '2021' ){
+                Write-Host "`tThe cleaning process seems to have failed. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
+                Write-Host "`tAuthorization failed. Make sure 'Confirm Local Upgrade' is done on console for the endpoint. Or 'Site Wide Authorization' is done." -ForegroundColor Yellow
+                Write-Host "`tIf the above points are already done and verified. Escalate the issue to S1 support." -ForegroundColor Yellow
+                logMessage ERROR "The cleaning process seems to have failed. Exit code is $($exitcodeS1)" $logFile 
             }
             elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
             {
