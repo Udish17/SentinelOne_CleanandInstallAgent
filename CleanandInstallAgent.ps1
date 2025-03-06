@@ -75,7 +75,7 @@ function checkPreReq(){
         logMessage INFO "SOI $($SOIName) exist." $logFile
     }
 
-    Write-Host "All pre-requisistes passed.." -ForegroundColor Green
+    Write-Host "`tAll pre-requisistes passed.." -ForegroundColor Green
     logMessage INFO "All pre-requisistes passed." $logFile
 }
 
@@ -140,15 +140,15 @@ function checkServiceExistence(){
 
 function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){    
     try{
-            Write-Host "Running SOI -c to clean the agent..." -ForegroundColor Magenta
+            Write-Host "`tRunning SOI -c to clean the agent..."
             logMessage INFO "Running SOI -c to clean the agent." $logFile
             
             if(-not $passphrase){
-                Write-Host "Passphrase is NULL." -ForegroundColor Magenta
+                Write-Host "`tPassphrase is NULL." -ForegroundColor Yellow
                 logMessage WARN "Passphrase is NULL." $logFile
                 $serviceexistenace = checkServiceExistence
                 if($serviceexistenace -eq 1){
-                    Write-Warning "S1 Agent service is running. Running SOI -c without passphrase. Might return 2021 Exit Code."
+                    Write-Warning "S1 Agent service is running. Running SOI -c without passphrase. Might return 2021 or 2004 Exit Code."
                     logMessage WARN "S1 Agent service is running. Running SOI -c without passphrase." $logFile
                     Start-Process -FilePath $currentPathSOI -ArgumentList "-c -t `"$siteToken`" -q" -NoNewWindow -wait 
                 }
@@ -166,7 +166,7 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
             $exitcodeS1 = (Get-Content -Path C:\Windows\Temp\SC-exit-code.txt)
             if($exitcodeS1 -eq '0')
             {
-                Write-Host "The cleaning is successfull. Exit code is $($exitcodeS1). Proceeding with installaton...." -ForegroundColor "Cyan"
+                Write-Host "The cleaning is successfull. Exit code is $($exitcodeS1). Proceeding with installaton...." -ForegroundColor Cyan
                 logMessage INFO "The cleaning is successfull. Exit code is $($exitcodeS1). Proceeding with installaton." $logFile
                 #install with silent switch
                 Start-Process -FilePath $currentPathSOI -ArgumentList "-f --dont_fail_on_config_preserving_failures -t `"$siteToken`" -q" -NoNewWindow -Wait
@@ -179,7 +179,7 @@ function cleanAgent($passphrase, $argscriptPath, $argscriptFullPath  ){
                 }        
                 elseif($exitcodeS1 -ne '0' -or $exitcodeS1 -ne '12' -or $exitcodeS1 -ne '100' -or $exitcodeS1 -ne '101' -or $exitcodeS1 -ne '103' -or $exitcodeS1 -ne '104' -or $exitcodeS1 -ne '200')
                 {
-                    Write-Warning "The installation is NOT successfull. Exit code is $($exitcodeS1)." -ForegroundColor Yellow
+                    Write-Warning "The installation is NOT successfull. Exit code is $($exitcodeS1)."
                     logMessage INFO "The installation is NOT successfull. Exit code is $($exitcodeS1)." $logFile 
                 }
             }    
@@ -289,6 +289,9 @@ function startupTask(){
 
 #main
 try{
+    Write-Output "********************************************************************"
+    Write-Output "Script Started"
+    
     $Invocation = (Get-Variable MyInvocation).Value
     $logPath =  Split-Path $Invocation.MyCommand.Path
     $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
@@ -311,8 +314,10 @@ try{
         $boot = $false
     }    
 
-    checkPreReq
-    
+    Write-Output "********************************************************************"
+    checkPreReq    
+    Write-Output "********************************************************************"
+
     $taskReturn = checkTask
     if($taskReturn -eq 1){
         startupTask        
@@ -324,12 +329,14 @@ try{
         copyExeToLocalPath       
 
         # start the cleaning process
-        Write-Host "Starting the cleaning process..." -ForegroundColor Cyan
+        
+        Write-Host "Starting the cleaning process..." -ForegroundColor Cyan        
         logMessage INFO "Starting the cleaning process." $logFile        
             
         $scriptPath = getScriptDirectory
-        $scriptFullPath = $MyInvocation.MyCommand.Path 
-        cleanAgent $paramPassphrase $scriptPath  $scriptFullPath       
+        $scriptFullPath = $MyInvocation.MyCommand.Path        
+        cleanAgent $paramPassphrase $scriptPath  $scriptFullPath
+        Write-Output "********************************************************************"   
     }      
 }
 catch{
@@ -337,6 +344,10 @@ catch{
     Write-Error "Script failed with $($ErrorMessage)."
     logMessage ERROR "Script failed with $($ErrorMessage)" $logFile 
 }
+
+Write-Output "********************************************************************"
+Write-Output "Script ended."
+Write-Output "********************************************************************"
 
 
 
