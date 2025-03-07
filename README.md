@@ -1,4 +1,4 @@
-# SentinelOne
+# Introduction
 The script CleanandInstallAgent.ps1 helps you to remove the SentinelOne Windows Agent and Install it at one execution (even it needs a reboot after removal).
 
 # Pre-Requisistes
