@@ -1,5 +1,5 @@
 ﻿<#Version:
-       v1.1-alpha
+       v1.1-*
     About:
        This script is written to remove and install the SentinelOne agent.
     Author :
@@ -45,6 +45,7 @@ function checkPreReq(){
 
     if ($admin -eq $false) {
         Write-Warning "Please run the script as Administrator"
+        logMessage ERROR "Pre-req failed." $logFile
         logMessage WARN "Script not ran as Administrator." $logFile
         Start-Sleep -s 5
         Exit
@@ -56,6 +57,7 @@ function checkPreReq(){
     #check SOI path existence
     if(!(Test-Path -Path $pathToSOI -ErrorAction SilentlyContinue)){
         Write-Warning "Path to SOI $($pathToSOI) does not exist."
+        logMessage ERROR "Pre-req failed." $logFile
         logMessage WARN "Path to SOI $($pathToSOI) does not exist." $logFile
         Start-Sleep -s 5
         Exit
@@ -67,6 +69,7 @@ function checkPreReq(){
     #check SOI existence
     if(!(Test-Path -Path $pathToSOI\$SOIName -ErrorAction SilentlyContinue)){
         Write-Warning "SOI $($SOIName) does not exist."
+        logMessage ERROR "Pre-req failed." $logFile
         logMessage WARN "SOI $($SOIName) does not exist." $logFile
         Start-Sleep -s 5
         Exit
@@ -239,10 +242,19 @@ function checkTask(){
 }
 
 function createTask($arg2scriptPath, $arg2scriptFullPath){  
-  
+    
+    #adding '' to the path variables if 'space' is present in the path so the task scheduler can execute the script at startup with arguments    
+    if($arg2scriptFullPath -match '\s'){
+        $arg2scriptFullPath = "`"$arg2scriptFullPath`""
+    }
+    if($pathToSOI -match '\s'){
+        $m_pathToSOI = "`"$pathToSOI`""
+    }
+    
+    
     $taskTrigger = New-ScheduledTaskTrigger -AtStartup
     $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-    $taskAction = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File $arg2scriptFullPath -t $siteToken -p $pathToSOI -n $SOIName" -WorkingDirectory $arg2scriptPath
+    $taskAction = New-ScheduledTaskAction -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File $arg2scriptFullPath -t $siteToken -p $m_pathToSOI -n $SOIName" -WorkingDirectory $arg2scriptPath
     Register-ScheduledTask 'SentinelOne Installer Startup' -Action $taskAction -Trigger $taskTrigger -Settings $Settings -User "SYSTEM" -RunLevel Highest | Out-Null
 }
 
@@ -334,7 +346,9 @@ try{
         logMessage INFO "Starting the cleaning process." $logFile        
             
         $scriptPath = getScriptDirectory
-        $scriptFullPath = $MyInvocation.MyCommand.Path        
+        #$scriptPath = "'$scriptPath1'"
+        $scriptFullPath = $MyInvocation.MyCommand.Path
+        #$scriptFullPath = "'$scriptFullPath1'"    
         cleanAgent $paramPassphrase $scriptPath  $scriptFullPath
         Write-Output "********************************************************************"   
     }      
@@ -345,7 +359,7 @@ catch{
     logMessage ERROR "Script failed with $($ErrorMessage)" $logFile 
 }
 
-Write-Output "********************************************************************"
+#Write-Output "********************************************************************"
 Write-Output "Script ended."
 Write-Output "********************************************************************"
 
