@@ -7,7 +7,7 @@ The script CleanandInstallAgent.ps1 helps you to remove the SentinelOne Windows 
 3. Fetch the **'Passphrase'** for the endpoint. **'Uninstall/Master Passphrase'** can also be used for bulk removal and reinstall.
 
 # Instructions
-1. Download the latest version of the script from the 'Release' section.
+1. Download the latest version of the script from the **'Release'** section.
 2. Copy it to the affected endpoint.
 3. Open PowerShell and run the script with various options give below by replacing the parameters value:
 
