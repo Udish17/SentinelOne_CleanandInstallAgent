@@ -21,8 +21,8 @@ The script CleanandInstallAgent.ps1 helps you to remove the SentinelOne Windows 
 `powershell.exe -ExecutionPolicy Bypass -File "CleanandInstallAgent.ps1" -k "YOUR PASSPHRASE" -t <site_token> -p "<Path where SOI is present>" -n <SOI.exe name> -b True`
 
 # Arguments details
-1. $k = Passphrase or Mastr/Uninstall Passphrase
-2. $t = Site Token
-3. $p = Path where the SOI.exe is present. It can either a remote share or local path.
-4. $n = The name of the SOI.exe like SentinelOneInstaller_windows_64bit_v24_1_3_232.exe
-5. $b = Set it to 'True' or 'False', depending on whether to boot the endpoint automatically if the endpoint needs a reboot to complete the removal.
+$k = Passphrase or Master/Uninstall Passphrase
+$t = Site Token
+$p = Path where the SOI.exe is present. It can either a remote share or local path.
+$n = The name of the SOI.exe like SentinelOneInstaller_windows_64bit_v24_1_3_232.exe
+$b = Set it to 'True' or 'False', depending on whether to boot the endpoint automatically if the endpoint needs a reboot to complete the removal.
