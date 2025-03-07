@@ -263,7 +263,7 @@ function deleteTask(){
 }
 
 function startupTask(){
-    $startuplogFile = $logPath + "\" + "startup_log_$($dateUTC).txt"
+    $startuplogFile = $logPath + "\" + "SentinelOne_CleanandInstall_startup_log_$($dateUTC).txt"
     logMessage INFO "Task 'SentinelOne Installer Startup' is already present." $startuplogFile
     #Write-Host "Task 'SentinelOne Installer Startup' is already present."
     #Write-Host "Check if the last Exit Code is 200."
@@ -302,12 +302,12 @@ function startupTask(){
 #main
 try{
     Write-Output "********************************************************************"
-    Write-Output "Script Started"
+    Write-Output "Script Started.."
     
     $Invocation = (Get-Variable MyInvocation).Value
     $logPath =  Split-Path $Invocation.MyCommand.Path
     $dateUTC = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH_mm_ss')    
-    $logFile = $logPath + "\" + "log_$($dateUTC).txt"
+    $logFile = $logPath + "\" + "SentinelOne_CleanandInstall_log_$($dateUTC).txt"
     logMessage INFO "Script Starting." $logFile
 
     $paramPassphrase = $k
@@ -345,10 +345,8 @@ try{
         Write-Host "Starting the cleaning process..." -ForegroundColor Cyan        
         logMessage INFO "Starting the cleaning process." $logFile        
             
-        $scriptPath = getScriptDirectory
-        #$scriptPath = "'$scriptPath1'"
-        $scriptFullPath = $MyInvocation.MyCommand.Path
-        #$scriptFullPath = "'$scriptFullPath1'"    
+        $scriptPath = getScriptDirectory        
+        $scriptFullPath = $MyInvocation.MyCommand.Path            
         cleanAgent $paramPassphrase $scriptPath  $scriptFullPath
         Write-Output "********************************************************************"   
     }      
