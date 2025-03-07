@@ -357,7 +357,7 @@ catch{
     logMessage ERROR "Script failed with $($ErrorMessage)" $logFile 
 }
 
-#Write-Output "********************************************************************"
+Write-Output "********************************************************************"
 Write-Output "Script ended."
 Write-Output "********************************************************************"
 
