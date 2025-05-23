@@ -250,6 +250,9 @@ function createTask($arg2scriptPath, $arg2scriptFullPath){
     if($pathToSOI -match '\s'){
         $m_pathToSOI = "`"$pathToSOI`""
     }
+    else{
+        $m_pathToSOI = $pathToSOI           
+    }
     
     
     $taskTrigger = New-ScheduledTaskTrigger -AtStartup
